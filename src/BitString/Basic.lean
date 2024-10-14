@@ -43,19 +43,26 @@ def ones (size : Nat) : BitString where
   size := size
   isLt := Nat.sub_one_lt_of_lt size.two_pow_pos
 
-@[simp] def getLsb (x : BitString) (i : Nat) : Bool := x.toNat.testBit i
 
-@[simp] def lsb (x : BitString) := getLsb x 0
+/-- Return the `i`-th least significant bit or `false` if `i ≥ w`. -/
+@[simp, inline] def getLsbD (x : BitString) (i : Nat) : Bool := x.toNat.testBit i
 
-def substrLsb (x : BitString) (start len : Nat) : Nat :=
-  (x.toNat >>> start) % (1 <<< len)
+/-- Return the `i`-th least significant bit. -/
+@[inline] def getLsb (x : BitString) (i : Fin x.size) : Bool := x.getLsbD i.val
 
-def getMsb (x : BitString) (i : Nat) : Bool := x.getLsb (x.size - (i + 1))
+/-- Return the `i`-th least significant bit or `none` if `i ≥ w`. -/
+@[inline] def getLsb? (x : BitString) (i : Nat) : Option Bool :=
+  if i < x.size then some (x.getLsbD i) else none
 
-@[simp] def msb (x : BitString) := getMsb x 0
+/-- Return the `i`-th most significant bit. -/
+@[inline] def getMsbD (x : BitString) (i : Nat) : Bool := x.getLsbD (x.size - 1 - i)
 
-def substrMsb (x : BitString) (start len : Nat) : Nat :=
-  (x.toNat >>> (x.size - (start + len))) % (1 <<< len)
+/-- Return the `i`-th most significant bit. -/
+@[inline] def getMsb (x : BitString) (i : Fin x.size) : Bool := x.getMsbD i.val
+
+/-- Return the `i`-th most significant bit or `none` if `i ≥ w`. -/
+@[inline] def getMsb? (x : BitString) (i : Nat) : Option Bool :=
+  if i < x.size then some (x.getMsbD i) else none
 
 /-! ### shiftLeft -/
 
@@ -134,7 +141,7 @@ def bitwise (f : Bool → Bool → Bool) (n m : BitString) : BitString :=
   else if m = nil then
     if f true false then n else nil
   else
-    (bitwise f (n >>> 1) (m >>> 1)).push $ f n.lsb m.lsb
+    (bitwise f (n >>> 1) (m >>> 1)).push $ f (n.getLsbD 0) (m.getLsbD 0)
 termination_by n.size
 decreasing_by simp_wf; rw [eq_nil_iff_size_eq_zero] at *; omega
 
@@ -145,7 +152,7 @@ decreasing_by simp_wf; rw [eq_nil_iff_size_eq_zero] at *; omega
   | case3 x hx h => by_cases x.toNat = 0 <;> simp [bitwise, Nat.bitwise, *]
   | case5 x y hx hy ih =>
     unfold Nat.bitwise bitwise
-    simp [hx, hy, ih, lsb]
+    simp [hx, hy, ih]
     dsimp only [(.>>>.), ShiftRight.shiftRight, Nat.shiftRight]
     dsimp only [(.<<<.), ShiftLeft.shiftLeft, Nat.shiftLeft]
     by_cases f false true = true; all_goals
